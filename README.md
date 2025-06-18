@@ -39,7 +39,7 @@ pip (Python package installer) up to date.
 Installation
 Clone the Repository:
 
-git clone https://github.com/your-username/numinous-nexus-ai.git
+git clone https://github.com/mujtaba.kazmi2006/numinous-nexus-ai.git
 cd numinous-nexus-ai
 
 (Note: Replace your-username with your actual GitHub username)
