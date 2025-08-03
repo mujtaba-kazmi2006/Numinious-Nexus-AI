@@ -14,11 +14,15 @@ tts_engine = pyttsx3.init()
 tts_engine.setProperty('rate', 175)
 tts_engine.setProperty('volume', 1.0)
 
+dark_mode_enabled = False
+
+
 # === API KEYS ===
 # IMPORTANT: For security, consider loading API keys from environment variables
 # or a configuration file, ratherarding them directly in the script.
-AI_API_KEY = "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"
+AI_API_KEY = "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"
 NEWS_API_KEY = "b3dfc15d73704bfab32ebb96b5c9885b"
+
 
 # === Globals ===
 current_thread = None # Stores the currently running background thread
@@ -205,7 +209,7 @@ def ask_nunno(messages_list):
     }
 
     data = {
-        "model": "microsoft/phi-3-mini-128k-instruct",
+        "model": "meta-llama/llama-3.2-11b-vision-instruct", # Changed model
         "messages": messages_list # Now uses the full list of messages
     }
 
@@ -338,6 +342,77 @@ def example_clicked(command):
     entry.delete(0, tk.END)
     entry.insert(0, command)
     on_enter()
+
+
+import base64
+from tkinter import filedialog
+
+def encode_image(path):
+    try:
+        with open(path, "rb") as f:
+            return base64.b64encode(f.read()).decode("utf-8")
+    except Exception as e:
+        print(f"❌ Error reading image: {e}")
+        return None
+
+def analyze_chart(image_b64):
+    url = "https://openrouter.ai/api/v1/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {AI_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "model": "meta-llama/llama-3.2-11b-vision-instruct", # Changed model
+        "messages": [{
+            "role": "user",
+            "content": [
+                {"type": "text", "text": "You're an expert trading analyst. Analyze this chart, identify trend, support/resistance, patterns, and predict the next move."},
+                {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{image_b64}"}}
+            ]
+        }],
+        "max_tokens": 1000
+    }
+
+    try:
+        response = requests.post(url, headers=headers, json=payload)
+        response.raise_for_status()
+        return response.json()["choices"][0]["message"]["content"]
+    except Exception as e:
+        return f"❌ API error: {e}"
+
+def chart_analysis_thread():
+    global stop_flag, conversation_history
+    stop_flag = False
+    disable_input_controls()
+    status_label.config(text="📷 Analyzing chart...", fg="#FF6F00")
+
+    image_path = filedialog.askopenfilename(
+        title="Select Chart Image",
+        filetypes=[("Image Files", "*.png *.jpg *.jpeg")]
+    )
+    if not image_path:
+        enable_input_controls()
+        return
+
+    chat_log.insert(tk.END, f"\n📷 You uploaded: {image_path.split('/')[-1]}\n", "user")
+    image_b64 = encode_image(image_path)
+    if not image_b64:
+        chat_log.insert(tk.END, "❌ Could not read the image.\n", "error")
+        enable_input_controls()
+        return
+
+    analysis = analyze_chart(image_b64)
+    chat_log.insert(tk.END, "📈 Chart Analysis Result:\n", "analysis_header")
+    chat_log.insert(tk.END, analysis + "\n", "nunno")
+
+    conversation_history.append({"role": "user", "content": "Here is a chart analysis result:\n" + analysis + "\nPlease explain what this means for a beginner trader."})
+    response = ask_nunno(conversation_history)
+    conversation_history.append({"role": "assistant", "content": response})
+    chat_log.insert(tk.END, "🧠 Nunno's Commentary:\n", "nunno_header")
+    display_typing_effect(response + "\n", "nunno")
+
+    enable_input_controls()
+
 
 # --- UI Control Functions ---
 def enable_input_controls():
@@ -891,6 +966,23 @@ ask_btn = tk.Button(
     pady=10,
     cursor="hand2"
 )
+
+chart_btn = tk.Button(
+    input_container,
+    text="📷 Chart Analysis",
+    command=lambda: threading.Thread(target=chart_analysis_thread).start(),
+    bg="#8E24AA",
+    fg="white",
+    font=("Segoe UI", 11, "bold"),
+    relief="flat",
+    bd=0,
+    padx=20,
+    pady=10,
+    cursor="hand2"
+)
+chart_btn.pack(side=tk.LEFT, padx=(0,10))
+
+
 ask_btn.pack(side=tk.LEFT, padx=(0, 10))
 
 # Stop button
