@@ -3,7 +3,7 @@ import threading
 import tkinter as tk
 from tkinter import scrolledtext, messagebox
 from datetime import datetime
-import betterpridictormodule
+import betterpredictormodule
 import numpy as np
 from fuzzywuzzy import process
 import time
@@ -1159,3 +1159,4 @@ start_btn.pack(pady=40)
 welcome_frame.pack(fill=tk.BOTH, expand=True) # Show the welcome frame initially
 
 root.mainloop()
+
